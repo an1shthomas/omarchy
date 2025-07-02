@@ -3,8 +3,24 @@
 # Create browser config directory
 mkdir -p ~/.config/browser-flags
 
-# Copy browser flags configuration
-cp ~/.local/share/omarchy/config/browser-flags.conf ~/.config/browser-flags/
+# Copy base browser flags configuration
+cp ~/.local/share/omarchy/config/browser-flags-base.conf ~/.config/browser-flags/
+
+# Detect NVIDIA GPU
+if lspci | grep -i nvidia > /dev/null || [ -f /proc/driver/nvidia/version ]; then
+    echo "NVIDIA GPU detected, applying NVIDIA-specific optimizations..."
+    # Copy NVIDIA-specific configuration
+    cp ~/.local/share/omarchy/config/browser-flags-nvidia.conf ~/.config/browser-flags/
+    
+    # Create the combined configuration
+    cat ~/.config/browser-flags/browser-flags-base.conf > ~/.config/browser-flags/browser-flags.conf
+    echo "" >> ~/.config/browser-flags/browser-flags.conf
+    echo "# NVIDIA-specific settings" >> ~/.config/browser-flags/browser-flags.conf
+    cat ~/.config/browser-flags/browser-flags-nvidia.conf >> ~/.config/browser-flags/browser-flags.conf
+else
+    echo "No NVIDIA GPU detected, using base configuration..."
+    cp ~/.config/browser-flags/browser-flags-base.conf ~/.config/browser-flags/browser-flags.conf
+fi
 
 # Add to .zshrc to apply flags for all Chromium-based browsers
 echo '# Browser configuration' >> ~/.zshrc
