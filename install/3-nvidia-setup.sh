@@ -8,9 +8,24 @@ fi
 
 echo "NVIDIA GPU detected, setting up NVIDIA configuration..."
 
+# Detect GPU architecture to choose appropriate driver
+GPU_INFO=$(lspci -nn | grep -i nvidia | grep VGA)
+echo "Detected GPU: $GPU_INFO"
+
+# Determine driver based on GPU architecture
+# RTX 20xx, 30xx, 40xx, 50xx+ (Turing, Ampere, Ada Lovelace, Blackwell+) -> nvidia-open-dkms (recommended)
+# GTX 16xx, 10xx, 9xx and older -> nvidia-dkms (legacy support)
+if echo "$GPU_INFO" | grep -E "(RTX [2-9][0-9]{3}|RTX [A-Z0-9]+)" > /dev/null; then
+    NVIDIA_DRIVER="nvidia-open-dkms"
+    echo "Modern GPU detected - using nvidia-open-dkms (recommended by NVIDIA)"
+else
+    NVIDIA_DRIVER="nvidia-dkms"
+    echo "Legacy GPU detected - using nvidia-dkms"
+fi
+
 # Install NVIDIA packages
 yay -S --noconfirm --needed \
-    nvidia-dkms \
+    $NVIDIA_DRIVER \
     nvidia-utils \
     lib32-nvidia-utils \
     nvidia-settings \
@@ -23,13 +38,14 @@ yay -S --noconfirm --needed \
 
 # Create Pacman hook for nvidia modules
 sudo mkdir -p /etc/pacman.d/hooks/
-cat << 'EOF' | sudo tee /etc/pacman.d/hooks/nvidia.hook
+cat << EOF | sudo tee /etc/pacman.d/hooks/nvidia.hook
 [Trigger]
 Operation=Install
 Operation=Upgrade
 Operation=Remove
 Type=Package
 Target=nvidia-dkms
+Target=nvidia-open-dkms
 Target=linux
 
 [Action]
@@ -37,7 +53,7 @@ Description=Update NVIDIA module in initcpio
 Depends=mkinitcpio
 When=PostTransaction
 NeedsTargets
-Exec=/bin/sh -c 'while read -r trg; do case $trg in linux) exit 0; esac; done; /usr/bin/mkinitcpio -P'
+Exec=/bin/sh -c 'while read -r trg; do case \$trg in linux) exit 0; esac; done; /usr/bin/mkinitcpio -P'
 EOF
 
 # Add kernel parameters for NVIDIA
