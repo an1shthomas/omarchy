@@ -72,9 +72,30 @@ Exec=/bin/sh -c 'while read -r trg; do case \$trg in linux) exit 0; esac; done; 
 EOF
 
 # Add kernel parameters for NVIDIA
-if ! grep -q "nvidia_drm.modeset=1" /etc/default/grub; then
-    sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nvidia_drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1"/' /etc/default/grub
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
+if [ -f /etc/default/grub ]; then
+    # GRUB bootloader
+    if ! grep -q "nvidia_drm.modeset=1" /etc/default/grub; then
+        echo "Adding NVIDIA kernel parameters to GRUB..."
+        sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nvidia_drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1"/' /etc/default/grub
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
+    fi
+elif [ -d /boot/loader/entries ]; then
+    # systemd-boot
+    echo "Adding NVIDIA kernel parameters to systemd-boot..."
+    for entry in /boot/loader/entries/*.conf; do
+        if [ -f "$entry" ] && ! grep -q "nvidia_drm.modeset=1" "$entry"; then
+            sudo sed -i '/^options/ s/$/ nvidia_drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1/' "$entry"
+        fi
+    done
+elif [ -f /boot/refind_linux.conf ]; then
+    # rEFInd
+    echo "Adding NVIDIA kernel parameters to rEFInd..."
+    if ! grep -q "nvidia_drm.modeset=1" /boot/refind_linux.conf; then
+        sudo sed -i 's/"$/ nvidia_drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1"/' /boot/refind_linux.conf
+    fi
+else
+    echo "Warning: Unknown bootloader detected. Please manually add these kernel parameters:"
+    echo "nvidia_drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1"
 fi
 
 # Create modprobe config
