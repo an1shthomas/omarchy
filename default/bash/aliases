@@ -1,7 +1,7 @@
 # File system
-alias ls='eza -lh --group-directories-first --icons=auto'
+alias ls='lsd -lh --group-directories-first'
 alias lsa='ls -a'
-alias lt='eza --tree --level=2 --long --icons --git'
+alias lt='lsd --tree --depth=2 -l'
 alias lta='lt -a'
 alias ff="fzf --preview 'bat --style=numbers --color=always {}'"
 alias fd='fdfind'
