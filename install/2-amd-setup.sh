@@ -8,19 +8,34 @@ fi
 
 echo "AMD GPU detected, setting up AMD configuration..."
 
+# Enable multilib repository if not already enabled
+if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+    echo "Enabling multilib repository..."
+    sudo sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+    sudo pacman -Sy
+fi
+
 # Install AMD-specific packages
 yay -S --noconfirm --needed \
     mesa \
-    lib32-mesa \
     vulkan-radeon \
-    lib32-vulkan-radeon \
     vulkan-icd-loader \
-    lib32-vulkan-icd-loader \
     libva-mesa-driver \
-    lib32-libva-mesa-driver \
     mesa-vdpau \
-    lib32-mesa-vdpau \
     xf86-video-amdgpu
+
+# Install 32-bit packages if multilib is available
+if pacman -Sl multilib &>/dev/null; then
+    echo "Installing 32-bit AMD libraries..."
+    yay -S --noconfirm --needed \
+        lib32-mesa \
+        lib32-vulkan-radeon \
+        lib32-vulkan-icd-loader \
+        lib32-libva-mesa-driver \
+        lib32-mesa-vdpau
+else
+    echo "Multilib repository not available, skipping 32-bit libraries..."
+fi
 
 # Create Hyprland AMD config
 mkdir -p ~/.config/hypr

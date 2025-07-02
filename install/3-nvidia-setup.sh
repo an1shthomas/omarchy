@@ -23,18 +23,33 @@ else
     echo "Legacy GPU detected - using nvidia-dkms"
 fi
 
+# Enable multilib repository if not already enabled
+if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+    echo "Enabling multilib repository..."
+    sudo sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+    sudo pacman -Sy
+fi
+
 # Install NVIDIA packages
 yay -S --noconfirm --needed \
     $NVIDIA_DRIVER \
     nvidia-utils \
-    lib32-nvidia-utils \
     nvidia-settings \
     vulkan-icd-loader \
-    lib32-vulkan-icd-loader \
     libva \
     libva-nvidia-driver \
     qt5-wayland \
     qt6-wayland
+
+# Install 32-bit packages if multilib is available
+if pacman -Sl multilib &>/dev/null; then
+    echo "Installing 32-bit NVIDIA libraries..."
+    yay -S --noconfirm --needed \
+        lib32-nvidia-utils \
+        lib32-vulkan-icd-loader
+else
+    echo "Multilib repository not available, skipping 32-bit libraries..."
+fi
 
 # Create Pacman hook for nvidia modules
 sudo mkdir -p /etc/pacman.d/hooks/
