@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# Ensure desktop files are copied first
-mkdir -p ~/.local/share/applications
-if [ -d ~/.local/share/omarchy/applications ]; then
-    cp ~/.local/share/omarchy/applications/*.desktop ~/.local/share/applications/ 2>/dev/null || true
-    update-desktop-database ~/.local/share/applications 2>/dev/null || true
-fi
-
 # Create browser config directory
 mkdir -p ~/.config/browser-flags
 
