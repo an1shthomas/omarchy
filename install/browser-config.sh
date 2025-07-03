@@ -23,42 +23,75 @@ else
 fi
 
 # Add to .zshrc to apply flags for all Chromium-based browsers
-echo '# Browser configuration' >> ~/.zshrc
-echo 'source ~/.config/browser-flags/browser-flags.conf' >> ~/.zshrc
-echo 'export BROWSER=brave-browser' >> ~/.zshrc
+if ! grep -q "# Browser configuration" ~/.zshrc 2>/dev/null; then
+    echo '# Browser configuration' >> ~/.zshrc
+    echo 'source ~/.config/browser-flags/browser-flags.conf' >> ~/.zshrc
+    echo 'export BROWSER=brave' >> ~/.zshrc
+fi
 
 # Create wrapper scripts for each browser to apply flags
 mkdir -p ~/.local/bin
 
 # Brave wrapper
-echo '#!/bin/bash
+cat > ~/.local/bin/brave-wayland << 'EOF'
+#!/bin/bash
 source ~/.config/browser-flags/browser-flags.conf
-exec /usr/bin/brave $CHROME_FLAGS "$@"' > ~/.local/bin/brave-wayland
+exec /usr/bin/brave $CHROME_FLAGS "$@"
+EOF
 chmod +x ~/.local/bin/brave-wayland
 
 # Chrome wrapper
-echo '#!/bin/bash
+cat > ~/.local/bin/chrome-wayland << 'EOF'
+#!/bin/bash
 source ~/.config/browser-flags/browser-flags.conf
-exec /usr/bin/google-chrome-stable $CHROME_FLAGS "$@"' > ~/.local/bin/chrome-wayland
+exec /usr/bin/google-chrome-stable $CHROME_FLAGS "$@"
+EOF
 chmod +x ~/.local/bin/chrome-wayland
 
-# Update desktop entries to use the wrapper scripts (copy from system and modify)
+# Update desktop entries to use optimized Wayland configurations
 mkdir -p ~/.local/share/applications
 
 # Check for Brave browser
 if [ -f /usr/share/applications/brave-browser.desktop ]; then
-    cp /usr/share/applications/brave-browser.desktop ~/.local/share/applications/
-    sed -i 's|^Exec=brave |Exec=brave-wayland |' ~/.local/share/applications/brave-browser.desktop
-    echo "Updated Brave desktop entry to use Wayland wrapper"
+    echo "Creating optimized Brave desktop entry..."
+    cat > ~/.local/share/applications/brave-browser.desktop << 'EOF'
+[Desktop Entry]
+Version=1.0
+Name=Brave
+GenericName=Web Browser
+Comment=Access the Internet
+StartupNotify=true
+StartupWMClass=brave-browser
+TryExec=brave
+Exec=brave --ozone-platform=wayland --enable-features=UseOzonePlatform --force-device-scale-factor=1 %U
+Terminal=false
+Icon=brave-desktop
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ipfs;x-scheme-handler/ipns;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=brave --ozone-platform=wayland --enable-features=UseOzonePlatform --force-device-scale-factor=1
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Exec=brave --ozone-platform=wayland --enable-features=UseOzonePlatform --force-device-scale-factor=1 --incognito
+EOF
+    echo "Updated Brave desktop entry with Wayland scaling optimizations"
 else
     echo "Brave browser not installed, skipping..."
 fi
 
 # Check for Google Chrome
 if [ -f /usr/share/applications/google-chrome.desktop ]; then
+    echo "Creating optimized Chrome desktop entry..."
     cp /usr/share/applications/google-chrome.desktop ~/.local/share/applications/
-    sed -i 's|^Exec=/usr/bin/google-chrome-stable |Exec=chrome-wayland |' ~/.local/share/applications/google-chrome.desktop
-    echo "Updated Chrome desktop entry to use Wayland wrapper"
+    # Replace all Exec lines with optimized flags
+    sed -i 's|^Exec=/usr/bin/google-chrome-stable|Exec=/usr/bin/google-chrome-stable --ozone-platform=wayland --enable-features=UseOzonePlatform --force-device-scale-factor=1|g' ~/.local/share/applications/google-chrome.desktop
+    sed -i 's|^Exec=google-chrome-stable|Exec=google-chrome-stable --ozone-platform=wayland --enable-features=UseOzonePlatform --force-device-scale-factor=1|g' ~/.local/share/applications/google-chrome.desktop
+    echo "Updated Chrome desktop entry with Wayland scaling optimizations"
 else
     echo "Google Chrome not installed, skipping..."
 fi
