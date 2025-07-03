@@ -101,10 +101,29 @@ fi
 # Create modprobe config
 echo "options nvidia-drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf
 
-# Add NVIDIA modules to initramfs
-if ! grep -q "^MODULES=(.*nvidia.*)" /etc/mkinitcpio.conf; then
-    sudo sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
-    sudo mkinitcpio -P
+# Wait for DKMS to build modules
+echo "Waiting for NVIDIA DKMS modules to build..."
+sleep 5
+
+# Check if DKMS modules are built
+DKMS_STATUS=$(sudo dkms status | grep nvidia)
+if [ -z "$DKMS_STATUS" ]; then
+    echo "DKMS modules not found, attempting to build..."
+    sudo dkms autoinstall
+    sleep 10
+fi
+
+# Verify modules exist before adding to initramfs
+NVIDIA_MODULE_PATH="/lib/modules/$(uname -r)/updates/dkms"
+if [ -d "$NVIDIA_MODULE_PATH" ] && ls "$NVIDIA_MODULE_PATH"/nvidia*.ko* >/dev/null 2>&1; then
+    echo "NVIDIA modules found, adding to initramfs..."
+    if ! grep -q "^MODULES=(.*nvidia.*)" /etc/mkinitcpio.conf; then
+        sudo sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+        sudo mkinitcpio -P
+    fi
+else
+    echo "Warning: NVIDIA modules not found. Skipping initramfs configuration."
+    echo "You may need to reboot and run 'sudo dkms autoinstall' manually."
 fi
 
 # Create Hyprland NVIDIA config
