@@ -101,29 +101,62 @@ fi
 # Create modprobe config
 echo "options nvidia-drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf
 
-# Wait for DKMS to build modules
-echo "Waiting for NVIDIA DKMS modules to build..."
-sleep 5
+# Force DKMS to build NVIDIA modules
+echo "Building NVIDIA DKMS modules..."
+KERNEL_VERSION=$(uname -r)
 
-# Check if DKMS modules are built
-DKMS_STATUS=$(sudo dkms status | grep nvidia)
-if [ -z "$DKMS_STATUS" ]; then
-    echo "DKMS modules not found, attempting to build..."
-    sudo dkms autoinstall
-    sleep 10
+# Get the installed NVIDIA driver version
+if pacman -Q nvidia-open-dkms >/dev/null 2>&1; then
+    NVIDIA_VERSION=$(pacman -Q nvidia-open-dkms | awk '{print $2}' | cut -d'-' -f1)
+    DRIVER_NAME="nvidia-open"
+elif pacman -Q nvidia-dkms >/dev/null 2>&1; then
+    NVIDIA_VERSION=$(pacman -Q nvidia-dkms | awk '{print $2}' | cut -d'-' -f1)
+    DRIVER_NAME="nvidia"
+else
+    echo "Error: No NVIDIA DKMS driver found!"
+    exit 1
 fi
 
-# Verify modules exist before adding to initramfs
-NVIDIA_MODULE_PATH="/lib/modules/$(uname -r)/updates/dkms"
-if [ -d "$NVIDIA_MODULE_PATH" ] && ls "$NVIDIA_MODULE_PATH"/nvidia*.ko* >/dev/null 2>&1; then
-    echo "NVIDIA modules found, adding to initramfs..."
+echo "Found $DRIVER_NAME version $NVIDIA_VERSION for kernel $KERNEL_VERSION"
+
+# Remove any existing DKMS modules first
+sudo dkms remove -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION 2>/dev/null || true
+
+# Add and build the DKMS module
+echo "Adding DKMS module..."
+sudo dkms add -m $DRIVER_NAME -v $NVIDIA_VERSION
+
+echo "Building DKMS module (this may take a few minutes)..."
+sudo dkms build -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION
+
+echo "Installing DKMS module..."
+sudo dkms install -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION
+
+# Wait a moment for modules to be available
+sleep 3
+
+# Verify modules exist in multiple possible locations
+NVIDIA_MODULE_FOUND=false
+for MODULE_PATH in "/lib/modules/$KERNEL_VERSION/updates/dkms" "/lib/modules/$KERNEL_VERSION/kernel/drivers/gpu/drm" "/lib/modules/$KERNEL_VERSION/extra"; do
+    if [ -d "$MODULE_PATH" ] && ls "$MODULE_PATH"/nvidia*.ko* >/dev/null 2>&1; then
+        echo "NVIDIA modules found in $MODULE_PATH"
+        NVIDIA_MODULE_FOUND=true
+        break
+    fi
+done
+
+if [ "$NVIDIA_MODULE_FOUND" = true ]; then
+    echo "NVIDIA modules successfully built and installed, adding to initramfs..."
     if ! grep -q "^MODULES=(.*nvidia.*)" /etc/mkinitcpio.conf; then
         sudo sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
         sudo mkinitcpio -P
     fi
 else
-    echo "Warning: NVIDIA modules not found. Skipping initramfs configuration."
-    echo "You may need to reboot and run 'sudo dkms autoinstall' manually."
+    echo "Warning: NVIDIA modules still not found after DKMS build."
+    echo "Please check DKMS status with: sudo dkms status"
+    echo "You may need to reboot and run the following manually:"
+    echo "  sudo dkms autoinstall"
+    echo "  sudo mkinitcpio -P"
 fi
 
 # Create Hyprland NVIDIA config
