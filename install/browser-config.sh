@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Ensure desktop files are copied first
+mkdir -p ~/.local/share/applications
+if [ -d ~/.local/share/omarchy/applications ]; then
+    cp ~/.local/share/omarchy/applications/*.desktop ~/.local/share/applications/ 2>/dev/null || true
+    update-desktop-database ~/.local/share/applications 2>/dev/null || true
+fi
+
 # Create browser config directory
 mkdir -p ~/.config/browser-flags
 
@@ -42,6 +49,17 @@ source ~/.config/browser-flags/browser-flags.conf
 exec /usr/bin/google-chrome-stable $CHROME_FLAGS "$@"' > ~/.local/bin/chrome-wayland
 chmod +x ~/.local/bin/chrome-wayland
 
-# Update desktop entries to use the wrapper scripts
-sed -i 's|^Exec=brave |Exec=brave-wayland |' ~/.local/share/applications/brave-browser.desktop
-sed -i 's|^Exec=/usr/bin/google-chrome-stable |Exec=chrome-wayland |' ~/.local/share/applications/google-chrome.desktop
+# Update desktop entries to use the wrapper scripts (only if they exist)
+if [ -f ~/.local/share/applications/brave-browser.desktop ]; then
+    sed -i 's|^Exec=brave |Exec=brave-wayland |' ~/.local/share/applications/brave-browser.desktop
+    echo "Updated Brave desktop entry to use Wayland wrapper"
+else
+    echo "Brave desktop entry not found, skipping..."
+fi
+
+if [ -f ~/.local/share/applications/google-chrome.desktop ]; then
+    sed -i 's|^Exec=/usr/bin/google-chrome-stable |Exec=chrome-wayland |' ~/.local/share/applications/google-chrome.desktop
+    echo "Updated Chrome desktop entry to use Wayland wrapper"
+else
+    echo "Chrome desktop entry not found, skipping..."
+fi
