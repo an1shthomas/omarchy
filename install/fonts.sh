@@ -22,14 +22,40 @@ yay -S --noconfirm --needed \
 mkdir -p ~/.local/share/fonts
 
 # Update font cache
-fc-cache -f
+fc-cache -fv
 
+# Install iA Writer Mono fonts if not present
 if ! fc-list | grep -qi "iA Writer Mono S"; then
+  echo "Installing iA Writer Mono fonts..."
   cd /tmp
   wget -O iafonts.zip https://github.com/iaolo/iA-Fonts/archive/refs/heads/master.zip
-  unzip iafonts.zip -d iaFonts
-  cp iaFonts/iA-Fonts-master/iA\ Writer\ Mono/Static/iAWriterMonoS-*.ttf ~/.local/share/fonts
+  unzip -q iafonts.zip -d iaFonts
+  cp iaFonts/iA-Fonts-master/iA\ Writer\ Mono/Static/iAWriterMonoS-*.ttf ~/.local/share/fonts/
   rm -rf iafonts.zip iaFonts
-  fc-cache
   cd -
+fi
+
+# Final font cache update with verbose output
+echo "Updating font cache..."
+fc-cache -fv
+echo "Font installation complete!"
+
+# Verify some key fonts are available
+echo "Verifying font installation..."
+if fc-list | grep -qi "JetBrains Mono"; then
+    echo "✓ JetBrains Mono Nerd Font installed"
+else
+    echo "✗ JetBrains Mono Nerd Font not found"
+fi
+
+if fc-list | grep -qi "iA Writer Mono"; then
+    echo "✓ iA Writer Mono installed"
+else
+    echo "✗ iA Writer Mono not found"
+fi
+
+if fc-list | grep -qi "Font Awesome"; then
+    echo "✓ Font Awesome installed"
+else
+    echo "✗ Font Awesome not found"
 fi
