@@ -43,6 +43,8 @@ exec /usr/bin/google-chrome-stable $CHROME_FLAGS "$@"' > ~/.local/bin/chrome-way
 chmod +x ~/.local/bin/chrome-wayland
 
 # Update desktop entries to use the wrapper scripts (copy from system and modify)
+mkdir -p ~/.local/share/applications
+
 # Check for Brave browser
 if [ -f /usr/share/applications/brave-browser.desktop ]; then
     cp /usr/share/applications/brave-browser.desktop ~/.local/share/applications/
