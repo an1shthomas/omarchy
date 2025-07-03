@@ -42,6 +42,12 @@ echo "Font installation complete!"
 
 # Verify some key fonts are available
 echo "Verifying font installation..."
+if fc-list | grep -qi "CaskaydiaMono Nerd Font\|Cascadia.*Nerd"; then
+    echo "✓ CaskaydiaMono Nerd Font installed (primary terminal font)"
+else
+    echo "✗ CaskaydiaMono Nerd Font not found (required for terminal)"
+fi
+
 if fc-list | grep -qi "JetBrains Mono"; then
     echo "✓ JetBrains Mono Nerd Font installed"
 else
