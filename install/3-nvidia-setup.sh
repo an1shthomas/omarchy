@@ -30,6 +30,21 @@ if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
     sudo pacman -Sy
 fi
 
+# Install kernel headers (required for DKMS)
+echo "Installing kernel headers for DKMS..."
+KERNEL_PACKAGES=$(pacman -Q | grep -E '^linux ' | awk '{print $1}')
+for kernel in $KERNEL_PACKAGES; do
+    if [ "$kernel" = "linux" ]; then
+        yay -S --noconfirm --needed linux-headers
+    elif [ "$kernel" = "linux-lts" ]; then
+        yay -S --noconfirm --needed linux-lts-headers
+    elif [ "$kernel" = "linux-zen" ]; then
+        yay -S --noconfirm --needed linux-zen-headers
+    elif [ "$kernel" = "linux-hardened" ]; then
+        yay -S --noconfirm --needed linux-hardened-headers
+    fi
+done
+
 # Install NVIDIA packages following Hyprland guide
 echo "Installing NVIDIA packages..."
 yay -S --noconfirm --needed \
