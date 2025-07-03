@@ -109,9 +109,11 @@ KERNEL_VERSION=$(uname -r)
 if pacman -Q nvidia-open-dkms >/dev/null 2>&1; then
     NVIDIA_VERSION=$(pacman -Q nvidia-open-dkms | awk '{print $2}' | cut -d'-' -f1)
     DRIVER_NAME="nvidia-open"
+    PACKAGE_NAME="nvidia-open-dkms"
 elif pacman -Q nvidia-dkms >/dev/null 2>&1; then
     NVIDIA_VERSION=$(pacman -Q nvidia-dkms | awk '{print $2}' | cut -d'-' -f1)
     DRIVER_NAME="nvidia"
+    PACKAGE_NAME="nvidia-dkms"
 else
     echo "Error: No NVIDIA DKMS driver found!"
     exit 1
@@ -119,18 +121,57 @@ fi
 
 echo "Found $DRIVER_NAME version $NVIDIA_VERSION for kernel $KERNEL_VERSION"
 
+# Check if source directory exists
+SOURCE_DIR="/usr/src/$DRIVER_NAME-$NVIDIA_VERSION"
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Source directory $SOURCE_DIR not found. Reinstalling NVIDIA DKMS package..."
+    yay -S --noconfirm $PACKAGE_NAME
+    
+    # Wait a moment for files to be installed
+    sleep 2
+    
+    if [ ! -d "$SOURCE_DIR" ]; then
+        echo "Error: Source directory still not found after reinstall."
+        echo "Available source directories:"
+        ls -la /usr/src/ | grep nvidia || echo "No nvidia directories found"
+        
+        # Try to find any nvidia source directory
+        FOUND_DIR=$(find /usr/src -maxdepth 1 -name "nvidia*" -type d | head -1)
+        if [ -n "$FOUND_DIR" ]; then
+            ACTUAL_VERSION=$(basename "$FOUND_DIR" | sed "s/$DRIVER_NAME-//")
+            echo "Found alternative directory: $FOUND_DIR"
+            echo "Using version: $ACTUAL_VERSION"
+            NVIDIA_VERSION="$ACTUAL_VERSION"
+            SOURCE_DIR="$FOUND_DIR"
+        else
+            echo "No NVIDIA source directories found. Skipping DKMS build."
+            echo "You may need to manually install the NVIDIA drivers after reboot."
+            exit 0
+        fi
+    fi
+fi
+
+echo "Using source directory: $SOURCE_DIR"
+
 # Remove any existing DKMS modules first
 sudo dkms remove -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION 2>/dev/null || true
 
 # Add and build the DKMS module
 echo "Adding DKMS module..."
-sudo dkms add -m $DRIVER_NAME -v $NVIDIA_VERSION
+if ! sudo dkms add -m $DRIVER_NAME -v $NVIDIA_VERSION; then
+    echo "Failed to add DKMS module. Trying to continue anyway..."
+fi
 
 echo "Building DKMS module (this may take a few minutes)..."
-sudo dkms build -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION
+if ! sudo dkms build -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION; then
+    echo "DKMS build failed. Trying autoinstall as fallback..."
+    sudo dkms autoinstall
+fi
 
 echo "Installing DKMS module..."
-sudo dkms install -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION
+if ! sudo dkms install -m $DRIVER_NAME -v $NVIDIA_VERSION -k $KERNEL_VERSION; then
+    echo "DKMS install failed. Checking if modules were built anyway..."
+fi
 
 # Wait a moment for modules to be available
 sleep 3
