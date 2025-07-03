@@ -62,3 +62,8 @@ if [ -f /usr/share/applications/google-chrome.desktop ]; then
 else
     echo "Google Chrome not installed, skipping..."
 fi
+
+# Update desktop database so applications appear in wofi
+echo "Updating desktop database..."
+update-desktop-database ~/.local/share/applications 2>/dev/null || true
+echo "Browser configuration complete!"
