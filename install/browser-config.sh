@@ -49,17 +49,21 @@ source ~/.config/browser-flags/browser-flags.conf
 exec /usr/bin/google-chrome-stable $CHROME_FLAGS "$@"' > ~/.local/bin/chrome-wayland
 chmod +x ~/.local/bin/chrome-wayland
 
-# Update desktop entries to use the wrapper scripts (only if they exist)
-if [ -f ~/.local/share/applications/brave-browser.desktop ]; then
+# Update desktop entries to use the wrapper scripts (copy from system and modify)
+# Check for Brave browser
+if [ -f /usr/share/applications/brave-browser.desktop ]; then
+    cp /usr/share/applications/brave-browser.desktop ~/.local/share/applications/
     sed -i 's|^Exec=brave |Exec=brave-wayland |' ~/.local/share/applications/brave-browser.desktop
     echo "Updated Brave desktop entry to use Wayland wrapper"
 else
-    echo "Brave desktop entry not found, skipping..."
+    echo "Brave browser not installed, skipping..."
 fi
 
-if [ -f ~/.local/share/applications/google-chrome.desktop ]; then
+# Check for Google Chrome
+if [ -f /usr/share/applications/google-chrome.desktop ]; then
+    cp /usr/share/applications/google-chrome.desktop ~/.local/share/applications/
     sed -i 's|^Exec=/usr/bin/google-chrome-stable |Exec=chrome-wayland |' ~/.local/share/applications/google-chrome.desktop
     echo "Updated Chrome desktop entry to use Wayland wrapper"
 else
-    echo "Chrome desktop entry not found, skipping..."
+    echo "Google Chrome not installed, skipping..."
 fi
